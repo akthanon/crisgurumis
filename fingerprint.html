@@ -161,6 +161,13 @@
       }
     }
 
+      // Función para obtener la IP pública utilizando un servicio externo
+    async function getPublicIP() {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      return data.ip;
+    }
+
     async function getFingerprint() {
       const canvasFingerprint = await getCanvasFingerprint();
       const webglInfo = getWebGLInfo();
@@ -176,10 +183,12 @@
         document: getJSAttributes('document'),
         screen: getJSAttributes('screen')
       };
-
+      // Obtener la IP pública y la geolocalización
+      const publicIP = await getPublicIP();
       const fingerprint = {
         'User Agent': navigator.userAgent,
         'Idioma': navigator.language,
+        'IP Pública': publicIP,
         'Plataforma': navigator.platform,
         'Núcleos CPU': navigator.hardwareConcurrency,
         'Memoria del Dispositivo (GB)': navigator.deviceMemory || 'No soportado',
